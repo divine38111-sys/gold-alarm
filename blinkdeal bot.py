@@ -193,9 +193,18 @@ def check():
     html = fetch(LISTING_URL)
     for m in CODE_RE.findall(html):
         live.add(re.sub(r"\s", "", m).upper())
-    if html:
-        rows_all = product_rows(find_products(extract_state(html)), "")
+    rows_all = product_rows(find_products(extract_state(html)), "") if html else []
+    if rows_all:
+        cheapest = sorted([r for r in rows_all if r["per_gram"]], key=lambda r: r["per_gram"])
+        log(f"HEALTH OK: Myntra listing loaded, {len(rows_all)} gold coins seen."
+            + (f" Cheapest now Rs {cheapest[0]['per_gram']:,}/g ({cheapest[0]['name'][:50]})"
+               if cheapest else ""))
         log_prices(rows_all, "none")
+    else:
+        title = re.search(r"<title>(.*?)</title>", html or "", re.S | re.I)
+        log("HEALTH WARNING: Myntra page had NO gold coins - probably blocked. "
+            f"Page title: {title.group(1).strip()[:80] if title else 'none'} "
+            f"| page size: {len(html or '')} chars")
 
     # 2) Probe each coupon filter; products present => coupon is live.
     for code in dict.fromkeys(CONFIG["CODES"] + sorted(live)):
